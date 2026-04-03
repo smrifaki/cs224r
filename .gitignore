@@ -1,0 +1,25 @@
+# data & checkpoints, live on Modal Volume, not in git
+/data/
+runs/
+*.ckpt
+*.pt
+
+# wandb local artifacts
+wandb/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+.venv/
+*.egg
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
