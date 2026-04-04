@@ -1,0 +1,44 @@
+name: cs224r
+channels:
+  - defaults
+dependencies:
+  - python=3.11
+  - pip
+  - pip:
+    # PyTorch - CUDA 12.1 wheels to match Modal's A10G/A100 images.
+    # On a CPU-only laptop, swap cu121 for cpu in the index URL.
+    - torch==2.4.*
+    - torchvision==0.19.*
+    - --extra-index-url https://download.pytorch.org/whl/cpu
+
+    # ML backbone & data
+    - timm>=1.0.0
+    - transformers>=4.44
+    - datasets>=3.0
+    - huggingface_hub>=0.24
+    - imagenet-c
+
+    # RL / env
+    - gymnasium>=1.0
+    - numpy<2.0
+    - scipy>=1.11
+
+    # Infra
+    - modal>=0.64
+    - wandb>=0.17
+    - pyyaml>=6.0
+    - tqdm
+    - typer>=0.12
+
+    # Analysis / plotting
+    - matplotlib
+    - seaborn
+    - pandas
+
+    # Dev
+    - pytest>=8.0
+    - pytest-xdist
+    - ruff>=0.4
+
+    # Project package (editable install)
+    - -e .

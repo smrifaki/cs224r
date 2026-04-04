@@ -1,0 +1,92 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "foveated"
+version = "0.1.0"
+description = "Prediction error as a policy feature in foveated vision (CS224R final project)"
+requires-python = ">=3.11"
+dependencies = [
+    # ML backbone
+    "timm>=1.0.0",
+    "transformers>=4.44",
+    # Data
+    "datasets>=3.0",
+    "huggingface_hub>=0.24",
+    "imagenet-c",
+    # RL / env
+    "gymnasium>=1.0",
+    "numpy<2.0",
+    "scipy>=1.11",
+    # Infra
+    "modal>=0.64",
+    "wandb>=0.17",
+    "pyyaml>=6.0",
+    "tqdm",
+    "typer>=0.12",
+    # Analysis
+    "matplotlib",
+    "seaborn",
+    "pandas",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-xdist",
+    "ruff>=0.4",
+]
+
+[project.scripts]
+fov-train             = "foveated.experiments.train_agent:main"
+fov-eval              = "foveated.experiments.evaluate:main"
+fov-pretrain-dynamics = "foveated.algos.dynamics_train:main"
+fov-fit-laplace       = "foveated.experiments.fit_laplace:main"
+fov-calibrate         = "foveated.experiments.calibration:main"
+fov-severity          = "foveated.experiments.severity_sweep:main"
+fov-feature-ablation  = "foveated.experiments.feature_ablation:main"
+fov-oracle            = "foveated.experiments.oracle_topk:main"
+fov-policy-viz        = "foveated.experiments.policy_viz:main"
+fov-aggregate         = "foveated.experiments.aggregate_seeds:main"
+fov-composite         = "foveated.experiments.composite_figure:main"
+fov-online-adapt      = "foveated.experiments.online_adaptation:main"
+fov-lipschitz         = "foveated.experiments.lipschitz_estimate:main"
+fov-validate-bound    = "foveated.experiments.validate_bound:main"
+fov-budget-sweep      = "foveated.experiments.budget_sweep:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = ["runs", "checkpoints", "data", ".venv"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear (likely bugs)
+    "UP",  # pyupgrade (modern syntax)
+    "W",   # pycodestyle warnings
+    "N",   # pep8-naming
+    "SIM", # flake8-simplify
+    "RUF", # ruff's own rules
+]
+ignore = [
+    "E501",   # line length handled by formatter, not lint
+    "N803",   # function argument naming: research code uses K, A, etc.
+    "N806",   # variable naming inside functions: same
+    "B008",   # function default value calls (e.g., torch.zeros): common in research code
+    "SIM117", # nested with: keeps research scripts readable
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E402"]
+"scripts/*" = ["E402"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts   = "-q"
