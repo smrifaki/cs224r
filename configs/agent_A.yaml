@@ -1,0 +1,28 @@
+# Agent A: baseline PPO on the foveated MDP. No extra features, no
+# intrinsic reward. The reference row of the four-agent ablation.
+
+agent: A
+backbone: vit_small_patch16_224
+embed_dim: 384
+
+manifest: manifest.json
+total_steps: 1_000_000
+
+ppo:
+  n_steps: 2048
+  batch_size: 256
+  n_epochs: 10
+  learning_rate: 3.0e-4
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.01
+
+env:
+  max_patches: 8
+  patch_cost: 0.02
+  grid: [7, 7]
+
+# Locked seeds.
+seed: 42
+out_dir: runs/seed_42

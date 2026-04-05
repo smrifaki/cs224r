@@ -1,0 +1,33 @@
+# Agent B: Pathak intrinsic-curiosity. Same as Agent A plus retrospective
+# precision-weighted residual added to the reward as intrinsic bonus.
+
+agent: B
+backbone: vit_small_patch16_224
+embed_dim: 384
+
+manifest: manifest.json
+total_steps: 1_000_000
+dynamics_ckpt: checkpoints/dynamics_v1.pt
+
+intrinsic:
+  beta_start: 0.01
+  beta_end: 0.001
+  anneal_steps: 100_000
+
+ppo:
+  n_steps: 2048
+  batch_size: 256
+  n_epochs: 10
+  learning_rate: 3.0e-4
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.01
+
+env:
+  max_patches: 8
+  patch_cost: 0.02
+  grid: [7, 7]
+
+seed: 42
+out_dir: runs/seed_42
