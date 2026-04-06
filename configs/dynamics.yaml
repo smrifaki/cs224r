@@ -1,0 +1,30 @@
+# Dynamics-model pretraining config.
+#
+# Used by `python -m foveated.algos.dynamics_train --config configs/dynamics.yaml`
+# (config loading is the caller's responsibility; CLI args still override).
+
+backbone: vit_small_patch16_224
+embed_dim: 384
+
+# Data
+manifest: manifest.json
+n_episodes: 2000     # random-policy rollouts collected for triples
+
+# Optimization
+epochs: 20
+batch_size: 256
+lr: 1.0e-3
+weight_decay: 1.0e-4
+action_dropout_p: 0.5
+grad_clip: 5.0
+
+# Model
+hidden_dim: 512
+depth: 3
+log_var_clamp:
+  min: -3.0
+  max: 3.0
+
+# Bookkeeping
+seed: 0
+out: checkpoints/dynamics_v1.pt
