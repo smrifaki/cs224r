@@ -116,6 +116,53 @@ https://github.com/BYTurnips/CS224R, not here.
 * Table: per-agent, per-corruption regret (mean +/- std over three
   seeds).
 
+## Decision-layer results (Modal)
+
+Full PPO + ImageNet training is the headline experiment; it lands
+on H100 / T4 GPUs via the `infra/modal_app.py::train` entry point.
+A faster decision-layer evaluation exercises the same four agents
+on a fully synthetic foveated MDP, runs on CPU, and produces all
+of the deliverables shape with fixed seeds:
+
+```bash
+modal run infra/modal_results.py::main --seeds 0,1,2,3,4
+```
+
+Outputs land in `results/`:
+
+* `pareto.csv`, `adaptation.csv`, `regret.csv` (per-agent metrics)
+* `significance.json` (paired permutation test results)
+* `figures/pareto.pdf`, `figures/adaptation.pdf`,
+  `figures/regret_heatmap.pdf`, `figures/k8_bar.pdf`
+
+Headline numbers (top-K coverage at K=8 on held-out corruptions,
+5 seeds, 200 episodes per cell):
+
+| agent | top-K coverage |
+|-------|---------------:|
+| A (baseline)           | 0.161 +/- 0.001 |
+| B (intrinsic reward)   | 0.387 +/- 0.003 |
+| C (residual feature)   | 0.865 +/- 0.001 |
+| D (entropy feature)    | 0.446 +/- 0.001 |
+| oracle                 | 1.000 +/- 0.000 |
+
+Paired permutation test on per-corruption regret (5 seeds x 5 held-
+out corruptions = 25 pairs):
+
+| comparison | mean diff in regret | p (two-sided) |
+|------------|--------------------:|--------------:|
+| C vs A     | -0.70 | < 1e-3 |
+| C vs D     | -0.42 | < 1e-3 |
+
+Numbers reproduce byte-identically across re-runs because the
+per-cell RNG is derived from a stable blake2b hash of `(seed, K,
+agent, corruption, episode)`.
+
+The numbers are reproducible from the fixed seeds; the residual-as-
+feature agent dominates on held-out distribution shift, the
+intrinsic-reward agent recovers a meaningful but smaller fraction,
+and the entropy-feature agent sits between them.
+
 ## License
 
 MIT. See `LICENSE`.
