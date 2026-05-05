@@ -1,0 +1,12 @@
+{
+  "C_vs_A_held_out": {
+    "n_pairs": 25,
+    "mean_diff": -0.7002499999999999,
+    "p_two_sided": 0.0
+  },
+  "C_vs_D_held_out": {
+    "n_pairs": 25,
+    "mean_diff": -0.41589999999999994,
+    "p_two_sided": 0.0
+  }
+}

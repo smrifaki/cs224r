@@ -77,10 +77,14 @@ select = [
 ]
 ignore = [
     "E501",   # line length handled by formatter, not lint
+    "E702",   # one-line `a = a.to(); b = b.to()` patterns are intentional
     "N803",   # function argument naming: research code uses K, A, etc.
     "N806",   # variable naming inside functions: same
+    "N812",   # `import torch.nn.functional as F` is the project convention
     "B008",   # function default value calls (e.g., torch.zeros): common in research code
     "SIM117", # nested with: keeps research scripts readable
+    "RUF012", # mutable class default is intentional in a few config dataclasses
+    "RUF059", # unpacked variable never used: gym step() returns 5-tuple, partial unpacks read intent
 ]
 
 [tool.ruff.lint.per-file-ignores]
