@@ -31,7 +31,6 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-
 HELD_OUT_CORRUPTIONS = ("snow", "frost", "fog", "pixelate")
 AGENT_COLOR = {"A": "#888888", "B": "#1f77b4", "C": "#d62728", "D": "#2ca02c"}
 

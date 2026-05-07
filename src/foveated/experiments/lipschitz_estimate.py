@@ -105,7 +105,7 @@ def main():
     )
 
     rows: list[dict] = []
-    for corruption in (None,) + CORRUPTION_NAMES:
+    for corruption in (None, *CORRUPTION_NAMES):
         cfg = FoveatedEnvConfig(
             **{**asdict(cfg_base),
                "corruption_type": corruption,
