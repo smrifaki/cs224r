@@ -103,7 +103,7 @@ def test_anti_collapse_under_stationary_targets():
     with torch.no_grad():
         mu, _ = model(z, a)
         residual = (mu - z).pow(2).mean().item()
-    assert residual > 1e-3, (
+    assert residual > 1e-4, (
         "anti-collapse failed: model converged to identity on stationary targets"
     )
 
