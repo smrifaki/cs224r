@@ -38,7 +38,7 @@ from foveated.experiments.collect_rollouts import collect_triples
 from foveated.models.dynamics import ForwardDynamics
 
 N_BINS = 10
-EVAL_CORRUPTIONS: tuple[str | None, ...] = (None,) + CORRUPTION_NAMES
+EVAL_CORRUPTIONS: tuple[str | None, ...] = (None, *CORRUPTION_NAMES)
 
 
 @torch.no_grad()
@@ -135,7 +135,7 @@ def main():
             "corruption": label,
             "severity": args.severity if corruption else 0,
             "ece": ece,
-            "n_samples": int(len(sq_res)),
+            "n_samples": len(sq_res),
         })
         print(f"{label:18s}  ECE={ece:.4f}  n={len(sq_res)}")
 

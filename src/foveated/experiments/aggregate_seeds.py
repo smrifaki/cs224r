@@ -66,7 +66,7 @@ def write_per_cell(
             rows.append({
                 "agent": agent,
                 "corruption": corruption,
-                "n_episodes_total": int(len(pooled)),
+                "n_episodes_total": len(pooled),
                 "n_seeds": int(sum(1 for s in by_seed.values() if any(r["agent"] == agent and r["corruption"] == corruption for r in s))),
                 "acc_mean": mean,
                 "acc_ci_lo": lo,
@@ -101,8 +101,8 @@ def write_held_out(
         mean, lo, hi = bootstrap_ci(pooled, rng=rng)
         rows.append({
             "agent": agent,
-            "n_episodes_total": int(len(pooled)),
-            "n_seeds": int(len(by_seed)),
+            "n_episodes_total": len(pooled),
+            "n_seeds": len(by_seed),
             "acc_mean": mean,
             "acc_ci_lo": lo,
             "acc_ci_hi": hi,

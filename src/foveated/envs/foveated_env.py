@@ -193,7 +193,7 @@ class FoveatedClassificationEnv(gym.Env):
         return 1 + self.cfg.goal_corruption_slots.index(self.cfg.corruption_type)
 
     def reset(
-        self, *, seed: int | None = None, options: dict[str, Any] | None = None  # noqa: ARG002
+        self, *, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[np.ndarray, dict]:
         if seed is not None:
             self.rng = np.random.default_rng(seed)
@@ -228,9 +228,7 @@ class FoveatedClassificationEnv(gym.Env):
         reward = 0.0
         terminated = False
 
-        if self.cfg.allow_stop_action and action == self.stop_action:
-            terminated = True
-        elif self.committed_mask[action] == 1.0:
+        if (self.cfg.allow_stop_action and action == self.stop_action) or self.committed_mask[action] == 1.0:
             terminated = True
         else:
             self.committed_mask[action] = 1.0
