@@ -27,11 +27,10 @@ print("=" * 50)
 # ── 1. Package imports ────────────────────────────────
 print("\n[1/4] package imports")
 try:
-    import torch
-    import timm
-    import gymnasium
-    import wandb
     import datasets  # noqa: F401
+    import gymnasium
+    import timm
+    import torch
 
     ok("torch, timm, gymnasium, wandb, datasets")
 except Exception as e:

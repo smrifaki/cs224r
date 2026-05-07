@@ -1,4 +1,7 @@
-import torch, timm, gymnasium, modal, wandb, datasets
+import gymnasium
+import modal
+import timm
+import torch
 
 print("torch", torch.__version__, "cuda", torch.cuda.is_available())
 print("timm", timm.__version__)
