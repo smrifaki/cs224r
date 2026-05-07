@@ -13,7 +13,6 @@ tests. We pin three properties:
 from __future__ import annotations
 
 import csv
-from pathlib import Path
 
 import numpy as np
 
@@ -29,7 +28,7 @@ from foveated.experiments.aggregate_seeds import (
 def _fake_seed_rows(agent_means: dict[str, float], n_episodes: int, rng) -> list[dict]:
     rows = []
     for agent, mu in agent_means.items():
-        for corruption in HELD_OUT_CORRUPTIONS + ("clean",):
+        for corruption in (*HELD_OUT_CORRUPTIONS, "clean"):
             accs = rng.binomial(1, mu, size=n_episodes).astype(float)
             rows.append({
                 "agent": agent,
@@ -55,7 +54,7 @@ def test_write_per_cell_one_row_per_pair(tmp_path):
     with out.open() as f:
         rows = list(csv.DictReader(f))
     pairs = {(r["agent"], r["corruption"]) for r in rows}
-    expected_pairs = {(a, c) for a in ("A", "C") for c in HELD_OUT_CORRUPTIONS + ("clean",)}
+    expected_pairs = {(a, c) for a in ("A", "C") for c in (*HELD_OUT_CORRUPTIONS, "clean")}
     assert pairs == expected_pairs
     for r in rows:
         assert float(r["acc_ci_lo"]) <= float(r["acc_mean"]) <= float(r["acc_ci_hi"])

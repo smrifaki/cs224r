@@ -27,7 +27,6 @@ from pathlib import Path
 
 import numpy as np
 
-
 HELD_OUT = ("snow", "frost", "fog", "pixelate")
 
 
