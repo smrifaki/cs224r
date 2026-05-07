@@ -98,7 +98,7 @@ def main():
         w.writerows(rows)
 
     fig, axes = plt.subplots(1, len(HELD_OUT_CORRUPTIONS), figsize=(3 * len(HELD_OUT_CORRUPTIONS), 3), sharey=True)
-    for ax, corruption in zip(axes, HELD_OUT_CORRUPTIONS):
+    for ax, corruption in zip(axes, HELD_OUT_CORRUPTIONS, strict=False):
         for agent in ("A", "B", "C", "D"):
             sub = [r for r in rows if r["agent"] == agent and r["corruption"] == corruption]
             if not sub:

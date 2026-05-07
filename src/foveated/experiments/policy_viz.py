@@ -25,9 +25,9 @@ from stable_baselines3 import PPO
 
 from foveated.data.imagenet import load_backbone, load_manifest
 from foveated.envs.foveated_env import (
+    _BILINEAR,
     FoveatedClassificationEnv,
     FoveatedEnvConfig,
-    _BILINEAR,
     load_and_corrupt,
 )
 from foveated.experiments.train_agent import build_env
