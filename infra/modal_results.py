@@ -362,6 +362,55 @@ def write_outputs(payload: dict[str, Any], out_dir: Path) -> dict[str, Path]:
     fig.savefig(bar_fig.with_suffix(".png"), dpi=200)
     plt.close(fig)
 
+    # Composite: 3 panels stacked horizontally.
+    fig, axes = plt.subplots(1, 3, figsize=(11.0, 3.0))
+
+    # Panel A: Pareto
+    ax = axes[0]
+    for agent in AGENTS + ["oracle"]:
+        rows = [r for r in payload["pareto"] if r["agent"] == agent]
+        rows.sort(key=lambda r: r["K"])
+        style = "--" if agent == "oracle" else "-"
+        ax.errorbar([r["K"] for r in rows], [r["accuracy"] for r in rows],
+                    yerr=[r.get("stderr", 0.0) for r in rows],
+                    label=agent, color=_PALETTE[agent],
+                    linestyle=style, marker="o")
+    ax.set_xlabel("patch budget K")
+    ax.set_ylabel("top-K coverage")
+    ax.set_xticks(PATCH_BUDGETS)
+    ax.set_title("a) Pareto, held-out corruptions")
+    ax.legend(frameon=False, ncol=2, columnspacing=1.0)
+
+    # Panel B: K=8 bar
+    ax = axes[1]
+    ax.bar(xs, means, yerr=errs, color=colors, capsize=3,
+           edgecolor="white", error_kw={"lw": 1})
+    ax.set_xticks(xs)
+    ax.set_xticklabels(bar_agents)
+    ax.set_ylabel("top-K coverage, K=8")
+    ax.set_ylim(0, 1.05)
+    ax.set_title("b) K=8 held-out")
+
+    # Panel C: regret heatmap
+    ax = axes[2]
+    im = ax.imshow(matrix, cmap="magma", aspect="auto", vmin=0,
+                   vmax=max(0.05, matrix.max()))
+    ax.set_xticks(range(len(corruption_order)))
+    ax.set_xticklabels(corruption_order, rotation=45, ha="right", fontsize=7)
+    ax.set_yticks(range(len(AGENTS)))
+    ax.set_yticklabels(AGENTS)
+    held_out_xs = [j for j, c in enumerate(corruption_order) if c in HELD_OUT]
+    if held_out_xs:
+        ax.axvline(min(held_out_xs) - 0.5, color="white", lw=1.0)
+    fig.colorbar(im, ax=ax, fraction=0.025, pad=0.02, label="regret")
+    ax.set_title("c) per-corruption regret")
+
+    fig.tight_layout()
+    composite_fig = out_dir / "figures" / "composite.pdf"
+    fig.savefig(composite_fig)
+    fig.savefig(composite_fig.with_suffix(".png"), dpi=200)
+    plt.close(fig)
+
     return {
         "pareto": pareto_path,
         "adapt": adapt_path,
@@ -370,6 +419,7 @@ def write_outputs(payload: dict[str, Any], out_dir: Path) -> dict[str, Path]:
         "fig_adapt": adapt_fig,
         "fig_regret": regret_fig,
         "fig_k8_bar": bar_fig,
+        "fig_composite": composite_fig,
     }
 
 
@@ -502,8 +552,8 @@ def _aggregate(payloads: list[dict[str, Any]]) -> dict[str, Any]:
 
 @app.local_entrypoint()
 def main(
-    seeds: str = "0,1,2,3,4",
-    n_episodes: int = 200,
+    seeds: str = "0,1,2,3,4,5,6,7",
+    n_episodes: int = 400,
     out_dir: str = "results",
 ) -> None:
     seed_list = [int(s) for s in seeds.split(",") if s.strip()]
