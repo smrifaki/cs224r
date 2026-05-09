@@ -79,12 +79,16 @@ def test_stop_action_terminates_immediately(tmp_path):
 def test_stop_action_after_one_commit(tmp_path):
     env = _build_env(tmp_path, allow_stop_action=True)
     env.reset()
-    env.step(0)
-    _, reward, term, _, info = env.step(env.stop_action)
+    _, r1, _, _, _ = env.step(0)
+    _, r2, term, _, info = env.step(env.stop_action)
     assert term
     assert info["committed_patches"] == [0]
-    # Reward = accuracy - patch_cost * 1.
-    assert reward == pytest.approx(1.0 - env.cfg.patch_cost, abs=1e-9)
+    # patch_cost paid in r1, classifier accuracy paid in r2 (only on
+    # the terminating step). Cumulative reward over the trajectory is
+    # accuracy - patch_cost.
+    assert r1 == pytest.approx(-env.cfg.patch_cost, abs=1e-9)
+    assert r2 == pytest.approx(1.0, abs=1e-9)
+    assert (r1 + r2) == pytest.approx(1.0 - env.cfg.patch_cost, abs=1e-9)
 
 
 def test_stop_action_indexing_consistent(tmp_path):
