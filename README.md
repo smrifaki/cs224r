@@ -136,24 +136,25 @@ Outputs land in `results/`:
   `figures/regret_heatmap.pdf`, `figures/k8_bar.pdf`
 
 Headline numbers (top-K coverage at K=8 on held-out corruptions,
-5 seeds, 200 episodes per cell):
+8 seeds, 400 episodes per cell):
 
 | agent | top-K coverage |
 |-------|---------------:|
-| A (baseline)           | 0.161 +/- 0.001 |
-| B (intrinsic reward)   | 0.387 +/- 0.003 |
-| C (residual feature)   | 0.865 +/- 0.001 |
-| D (entropy feature)    | 0.446 +/- 0.001 |
+| A (baseline)           | 0.162 +/- 0.001 |
+| B (intrinsic reward)   | 0.390 +/- 0.001 |
+| C (residual feature)   | 0.872 +/- 0.001 |
+| D (entropy feature)    | 0.445 +/- 0.001 |
 | oracle                 | 1.000 +/- 0.000 |
 
-Paired permutation test on per-corruption regret (5 seeds x 5 held-
-out corruptions = 25 pairs):
+Paired permutation test on per-corruption regret (8 seeds x 5 held-
+out corruptions = 40 pairs):
 
 | comparison | mean diff in regret | p (two-sided) |
 |------------|--------------------:|--------------:|
-| C vs A     | -0.70 | < 1e-3 |
-| C vs D     | -0.42 | < 1e-3 |
+| C vs A     | -0.707 | < 1e-3 |
+| C vs D     | -0.424 | < 1e-3 |
 
+Full breakdown across K and per-corruption: [RESULTS.md](RESULTS.md).
 Numbers reproduce byte-identically across re-runs because the
 per-cell RNG is derived from a stable blake2b hash of `(seed, K,
 agent, corruption, episode)`.
