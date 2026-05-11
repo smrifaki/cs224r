@@ -280,6 +280,50 @@ def write_outputs(payload: dict[str, Any], out_dir: Path) -> dict[str, Path]:
         sig_path = out_dir / "significance.json"
         sig_path.write_text(_json.dumps(payload["significance"], indent=2))
 
+    # Approach-rate regression. As K grows, every agent approaches
+    # the oracle ceiling at 1.0 from below. If the approach is
+    # exponential then log(1 - coverage) is linear in K, with slope
+    # -alpha. Agent C should have the largest alpha (fastest
+    # approach to the ceiling). We fit each agent's coverage vs K
+    # by ordinary least squares in log space.
+    Ks = sorted({r["K"] for r in payload["pareto"]})
+    Ks_arr = np.array(Ks, dtype=float)
+    by_agent = {
+        a: {r["K"]: r["accuracy"] for r in payload["pareto"] if r["agent"] == a}
+        for a in (AGENTS + ["oracle"])
+    }
+    gaps_C_minus_A = np.array(
+        [by_agent["C"][k] - by_agent["A"][k] for k in Ks], dtype=float
+    )
+
+    fits: list[dict[str, Any]] = []
+    for agent in AGENTS:
+        cov = np.array([by_agent[agent][k] for k in Ks], dtype=float)
+        log_gap = np.log(np.maximum(1.0 - cov, 1e-6))
+        slope, intercept = np.polyfit(Ks_arr, log_gap, 1)
+        alpha = float(-slope)
+        pred_log = slope * Ks_arr + intercept
+        rss = float(((pred_log - log_gap) ** 2).sum())
+        tss = float(((log_gap - log_gap.mean()) ** 2).sum())
+        r_squared = 1.0 - (rss / tss) if tss > 0 else 0.0
+        fits.append({
+            "agent": agent,
+            "alpha": alpha,
+            "intercept": float(intercept),
+            "r_squared": float(r_squared),
+            "rss": rss,
+        })
+
+    regression = {
+        "model": "log(1 - coverage(K)) = -alpha * K + intercept",
+        "interpretation": "larger alpha means faster approach to ceiling",
+        "K_grid": [int(k) for k in Ks],
+        "fits": fits,
+        "observed_gap_C_minus_A": [float(g) for g in gaps_C_minus_A.tolist()],
+    }
+    reg_path = out_dir / "regression.json"
+    reg_path.write_text(_json.dumps(regression, indent=2))
+
     # Pareto figure
     fig, ax = plt.subplots(figsize=(4.6, 3.0))
     for agent in AGENTS + ["oracle"]:
@@ -360,6 +404,28 @@ def write_outputs(payload: dict[str, Any], out_dir: Path) -> dict[str, Path]:
     bar_fig = out_dir / "figures" / "k8_bar.pdf"
     fig.savefig(bar_fig)
     fig.savefig(bar_fig.with_suffix(".png"), dpi=200)
+    plt.close(fig)
+
+    # Approach-rate figure: log(1 - coverage) vs K for each agent,
+    # with the fitted line overlaid. Steeper line = faster approach
+    # to the oracle ceiling.
+    fig, ax = plt.subplots(figsize=(4.4, 3.0))
+    for agent, fit in zip(AGENTS, fits, strict=False):
+        cov = np.array([by_agent[agent][k] for k in Ks], dtype=float)
+        log_gap = np.log(np.maximum(1.0 - cov, 1e-6))
+        ax.scatter(Ks_arr, log_gap, color=_PALETTE[agent], s=18,
+                   zorder=3, label=f"{agent} (alpha={fit['alpha']:.3f})")
+        grid = np.linspace(min(Ks_arr), max(Ks_arr), 50)
+        ax.plot(grid, -fit["alpha"] * grid + fit["intercept"],
+                color=_PALETTE[agent], lw=1.0, alpha=0.5)
+    ax.set_xlabel("patch budget K")
+    ax.set_ylabel("log(1 - coverage)")
+    ax.set_xticks([int(k) for k in Ks])
+    ax.legend(frameon=False, loc="lower left")
+    fig.tight_layout()
+    reg_fig = out_dir / "figures" / "regression.pdf"
+    fig.savefig(reg_fig)
+    fig.savefig(reg_fig.with_suffix(".png"), dpi=200)
     plt.close(fig)
 
     # Composite: 3 panels stacked horizontally.
@@ -524,6 +590,29 @@ def _aggregate(payloads: list[dict[str, Any]]) -> dict[str, Any]:
         for seed in per_seed_c.keys() & per_seed_d.keys():
             paired_diffs_cd.append(per_seed_c[seed] - per_seed_d[seed])
 
+    # Per-K paired permutation tests for C vs A (Pareto). At each K
+    # we treat the 8 seeds as paired observations on the same env.
+    per_k_tests: list[dict[str, Any]] = []
+    pareto_by_seed: dict[tuple[str, int, int], float] = {}
+    for p in payloads:
+        for r in p["pareto"]:
+            if r["agent"] in ("A", "C"):
+                pareto_by_seed[(r["agent"], r["K"], p["seed"])] = r["accuracy"]
+    seed_list = [p["seed"] for p in payloads]
+    for K in payloads[0]["patch_budgets"]:
+        diffs = []
+        for s in seed_list:
+            a = pareto_by_seed.get(("A", K, s))
+            c = pareto_by_seed.get(("C", K, s))
+            if a is not None and c is not None:
+                diffs.append(c - a)
+        per_k_tests.append({
+            "K": int(K),
+            "n_pairs": len(diffs),
+            "mean_diff_C_minus_A": float(np.mean(diffs)) if diffs else 0.0,
+            "p_two_sided": _paired_permutation_p(diffs),
+        })
+
     significance = {
         "C_vs_A_held_out": {
             "n_pairs": len(paired_diffs_ca),
@@ -535,6 +624,7 @@ def _aggregate(payloads: list[dict[str, Any]]) -> dict[str, Any]:
             "mean_diff": float(np.mean(paired_diffs_cd)) if paired_diffs_cd else 0.0,
             "p_two_sided": _paired_permutation_p(paired_diffs_cd),
         },
+        "C_vs_A_per_K": per_k_tests,
     }
 
     return {
