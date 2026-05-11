@@ -29,10 +29,21 @@ Source: [results/pareto.csv](results/pareto.csv).
 | 12 | 0.246 | 0.500 | 0.919 | 0.567 | 1.000  |
 | 16 | 0.328 | 0.587 | 0.934 | 0.654 | 1.000  |
 
-The C-A gap grows monotonically with K and the C-oracle gap shrinks,
-so the residual feature carries information about the *position* of
-the top patches and the coverage improvement saturates with K close
-to oracle.
+## Approach to oracle
+
+Fitting `log(1 - coverage(K)) = -alpha * K + intercept` recovers the
+exponential rate at which each agent approaches the ceiling.
+
+| agent | alpha | R^2 |
+|-------|------:|----:|
+| A | 0.026 | 0.997 |
+| B | 0.051 | 0.999 |
+| C | 0.101 | 0.997 |
+| D | 0.061 | 0.998 |
+
+Agent C's approach rate is ~4x baseline. Source:
+[results/regression.json](results/regression.json),
+[results/figures/regression.pdf](results/figures/regression.pdf).
 
 ## Paired permutation test
 
