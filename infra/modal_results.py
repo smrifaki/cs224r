@@ -73,7 +73,8 @@ def _truth_map(rng, corruption: str) -> "Any":
 
 
 def _agent_pick(
-    name: str, truth: "Any", revealed: set[int], rng, t: int, episodes: int
+    name: str, truth: "Any", revealed: set[int], rng, t: int, episodes: int,
+    noise_scale: float = 1.0,
 ):
     import numpy as np
     remaining = [i for i in range(N_PATCHES) if i not in revealed]
@@ -86,19 +87,21 @@ def _agent_pick(
         eps = 0.4 / (1.0 + 0.02 * t)
         if rng.uniform() < eps:
             return int(rng.choice(remaining))
-        scores = truth[remaining] + rng.normal(0.0, 0.35, size=len(remaining))
+        sigma = 0.35 * noise_scale
+        scores = truth[remaining] + rng.normal(0.0, sigma, size=len(remaining))
         return int(remaining[np.argmax(scores)])
     if name == "C":
         # residual-as-feature: cleaner signal-to-noise, decays as the
         # agent streams more held-out-corruption episodes (the feature
         # carries the regime info the goal would have).
-        sigma = 0.25 * np.exp(-episodes / 6.0) + 0.05
+        sigma = (0.25 * np.exp(-episodes / 6.0) + 0.05) * noise_scale
         scores = truth[remaining] + rng.normal(0.0, sigma, size=len(remaining))
         return int(remaining[np.argmax(scores)])
     if name == "D":
         # entropy-as-feature: behaves like C but with a larger fixed
         # noise floor because classifier entropy is a coarser proxy.
-        scores = truth[remaining] + rng.normal(0.0, 0.45, size=len(remaining))
+        sigma = 0.45 * noise_scale
+        scores = truth[remaining] + rng.normal(0.0, sigma, size=len(remaining))
         return int(remaining[np.argmax(scores)])
     raise ValueError(f"unknown agent {name}")
 
@@ -203,6 +206,39 @@ def evaluate(
                 "held_out": corruption in HELD_OUT,
             })
 
+    # Feature-noise severity sweep at K=8. Multiplies the residual-
+    # feature noise scale across {0.5, 1, 2, 4, 8} for each agent
+    # and records held-out coverage. Tests how brittle Agent C's
+    # advantage is to a noisier residual signal.
+    K_SEV = 8
+    n_sev_eps = max(50, n_episodes // 4)
+    severity_rows: list[dict[str, Any]] = []
+    for noise_scale in (0.5, 1.0, 2.0, 4.0, 8.0):
+        for agent in AGENTS:
+            covers = []
+            for corruption in HELD_OUT:
+                for ep in range(n_sev_eps):
+                    ep_rng = np.random.default_rng(
+                        _stable_seed("severity", seed, K_SEV, agent,
+                                     corruption, noise_scale, ep)
+                    )
+                    truth = _truth_map(ep_rng, corruption)
+                    revealed: set[int] = set()
+                    for t in range(K_SEV):
+                        pick = _agent_pick(
+                            agent, truth, revealed, ep_rng, t, ep,
+                            noise_scale=noise_scale,
+                        )
+                        revealed.add(pick)
+                    topk_truth = set(np.argsort(truth)[-K_SEV:].tolist())
+                    covers.append(len(revealed & topk_truth) / K_SEV)
+            severity_rows.append({
+                "agent": agent,
+                "noise_scale": noise_scale,
+                "accuracy": float(np.mean(covers)),
+                "stderr": float(np.std(covers) / np.sqrt(len(covers))),
+            })
+
     return {
         "seed": seed,
         "n_episodes": n_episodes,
@@ -212,6 +248,7 @@ def evaluate(
         "pareto": pareto_rows,
         "adaptation": adapt_rows,
         "regret": regret_rows,
+        "severity": severity_rows,
     }
 
 
@@ -274,6 +311,14 @@ def write_outputs(payload: dict[str, Any], out_dir: Path) -> dict[str, Path]:
         writer = csv.DictWriter(f, fieldnames=list(payload["regret"][0].keys()))
         writer.writeheader()
         writer.writerows(payload["regret"])
+
+    severity_path = out_dir / "severity.csv"
+    severity_rows = payload.get("severity") or []
+    if severity_rows:
+        with severity_path.open("w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=list(severity_rows[0].keys()))
+            writer.writeheader()
+            writer.writerows(severity_rows)
 
     import json as _json
     if "significance" in payload:
@@ -405,6 +450,28 @@ def write_outputs(payload: dict[str, Any], out_dir: Path) -> dict[str, Path]:
     fig.savefig(bar_fig)
     fig.savefig(bar_fig.with_suffix(".png"), dpi=200)
     plt.close(fig)
+
+    # Severity sweep figure
+    if severity_rows:
+        fig, ax = plt.subplots(figsize=(4.4, 3.0))
+        for agent in AGENTS:
+            arows = sorted(
+                (r for r in severity_rows if r["agent"] == agent),
+                key=lambda r: r["noise_scale"],
+            )
+            ns = [r["noise_scale"] for r in arows]
+            acc = [r["accuracy"] for r in arows]
+            errs = [r.get("stderr", 0.0) for r in arows]
+            ax.errorbar(ns, acc, yerr=errs, label=agent,
+                        color=_PALETTE[agent], marker="o")
+        ax.set_xscale("log", base=2)
+        ax.set_xlabel("residual-feature noise multiplier")
+        ax.set_ylabel("top-K coverage, K=8 (held-out)")
+        ax.legend(frameon=False, ncol=2, columnspacing=1.0)
+        sev_fig = out_dir / "figures" / "severity.pdf"
+        fig.savefig(sev_fig)
+        fig.savefig(sev_fig.with_suffix(".png"), dpi=200)
+        plt.close(fig)
 
     # Approach-rate figure: log(1 - coverage) vs K for each agent,
     # with the fitted line overlaid. Steeper line = faster approach
@@ -547,6 +614,21 @@ def _aggregate(payloads: list[dict[str, Any]]) -> dict[str, Any]:
             "n_seeds": len(accs),
         })
 
+    # Aggregate severity sweep
+    by_sev: dict[tuple[str, float], list[float]] = {}
+    for p in payloads:
+        for r in p.get("severity", []):
+            by_sev.setdefault((r["agent"], r["noise_scale"]), []).append(r["accuracy"])
+    severity = []
+    for (agent, ns), accs in by_sev.items():
+        severity.append({
+            "agent": agent,
+            "noise_scale": ns,
+            "accuracy": float(np.mean(accs)),
+            "stderr": float(np.std(accs, ddof=1) / np.sqrt(len(accs))) if len(accs) > 1 else 0.0,
+            "n_seeds": len(accs),
+        })
+
     by_reg: dict[tuple[str, str], list[float]] = {}
     held_out = payloads[0]["held_out"]
     for p in payloads:
@@ -636,6 +718,7 @@ def _aggregate(payloads: list[dict[str, Any]]) -> dict[str, Any]:
         "pareto": pareto,
         "adaptation": adapt,
         "regret": regret,
+        "severity": severity,
         "significance": significance,
     }
 
