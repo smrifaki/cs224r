@@ -154,10 +154,20 @@ out corruptions = 40 pairs):
 | C vs A     | -0.707 | < 1e-3 |
 | C vs D     | -0.424 | < 1e-3 |
 
-Full breakdown across K and per-corruption: [RESULTS.md](RESULTS.md).
-Numbers reproduce byte-identically across re-runs because the
-per-cell RNG is derived from a stable blake2b hash of `(seed, K,
-agent, corruption, episode)`.
+Exponential approach to the ceiling, fitted across K:
+
+| agent | alpha (1/K) | R^2 |
+|-------|------------:|----:|
+| A | 0.026 | 0.997 |
+| B | 0.051 | 0.999 |
+| C | 0.101 | 0.997 |
+| D | 0.061 | 0.998 |
+
+Agent C reaches the oracle ceiling about 4x faster than baseline A.
+Full per-K significance and per-corruption breakdown:
+[RESULTS.md](RESULTS.md). Numbers reproduce byte-identically across
+re-runs because the per-cell RNG is derived from a stable blake2b
+hash of `(seed, K, agent, corruption, episode)`.
 
 The numbers are reproducible from the fixed seeds; the residual-as-
 feature agent dominates on held-out distribution shift, the
