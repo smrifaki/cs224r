@@ -206,38 +206,41 @@ def evaluate(
                 "held_out": corruption in HELD_OUT,
             })
 
-    # Feature-noise severity sweep at K=8. Multiplies the residual-
-    # feature noise scale across {0.5, 1, 2, 4, 8} for each agent
-    # and records held-out coverage. Tests how brittle Agent C's
-    # advantage is to a noisier residual signal.
-    K_SEV = 8
+    # Feature-noise severity sweep across (K, noise_scale) for each
+    # agent. Reports held-out coverage on a 2D grid; how brittle is
+    # Agent C's advantage to a noisier residual signal, and how does
+    # the brittleness scale with the patch budget.
     n_sev_eps = max(50, n_episodes // 4)
     severity_rows: list[dict[str, Any]] = []
-    for noise_scale in (0.5, 1.0, 2.0, 4.0, 8.0):
-        for agent in AGENTS:
-            covers = []
-            for corruption in HELD_OUT:
-                for ep in range(n_sev_eps):
-                    ep_rng = np.random.default_rng(
-                        _stable_seed("severity", seed, K_SEV, agent,
-                                     corruption, noise_scale, ep)
-                    )
-                    truth = _truth_map(ep_rng, corruption)
-                    revealed: set[int] = set()
-                    for t in range(K_SEV):
-                        pick = _agent_pick(
-                            agent, truth, revealed, ep_rng, t, ep,
-                            noise_scale=noise_scale,
+    sev_Ks = (4, 8, 16)
+    sev_scales = (0.5, 1.0, 2.0, 4.0, 8.0)
+    for K_sev in sev_Ks:
+        for noise_scale in sev_scales:
+            for agent in AGENTS:
+                covers = []
+                for corruption in HELD_OUT:
+                    for ep in range(n_sev_eps):
+                        ep_rng = np.random.default_rng(
+                            _stable_seed("severity", seed, K_sev, agent,
+                                         corruption, noise_scale, ep)
                         )
-                        revealed.add(pick)
-                    topk_truth = set(np.argsort(truth)[-K_SEV:].tolist())
-                    covers.append(len(revealed & topk_truth) / K_SEV)
-            severity_rows.append({
-                "agent": agent,
-                "noise_scale": noise_scale,
-                "accuracy": float(np.mean(covers)),
-                "stderr": float(np.std(covers) / np.sqrt(len(covers))),
-            })
+                        truth = _truth_map(ep_rng, corruption)
+                        revealed: set[int] = set()
+                        for t in range(K_sev):
+                            pick = _agent_pick(
+                                agent, truth, revealed, ep_rng, t, ep,
+                                noise_scale=noise_scale,
+                            )
+                            revealed.add(pick)
+                        topk_truth = set(np.argsort(truth)[-K_sev:].tolist())
+                        covers.append(len(revealed & topk_truth) / K_sev)
+                severity_rows.append({
+                    "agent": agent,
+                    "K": int(K_sev),
+                    "noise_scale": noise_scale,
+                    "accuracy": float(np.mean(covers)),
+                    "stderr": float(np.std(covers) / np.sqrt(len(covers))),
+                })
 
     return {
         "seed": seed,
@@ -451,23 +454,35 @@ def write_outputs(payload: dict[str, Any], out_dir: Path) -> dict[str, Path]:
     fig.savefig(bar_fig.with_suffix(".png"), dpi=200)
     plt.close(fig)
 
-    # Severity sweep figure
+    # Severity sweep figure: one subplot per K, all agents on the
+    # same noise-multiplier axis.
     if severity_rows:
-        fig, ax = plt.subplots(figsize=(4.4, 3.0))
-        for agent in AGENTS:
-            arows = sorted(
-                (r for r in severity_rows if r["agent"] == agent),
-                key=lambda r: r["noise_scale"],
-            )
-            ns = [r["noise_scale"] for r in arows]
-            acc = [r["accuracy"] for r in arows]
-            errs = [r.get("stderr", 0.0) for r in arows]
-            ax.errorbar(ns, acc, yerr=errs, label=agent,
-                        color=_PALETTE[agent], marker="o")
-        ax.set_xscale("log", base=2)
-        ax.set_xlabel("residual-feature noise multiplier")
-        ax.set_ylabel("top-K coverage, K=8 (held-out)")
-        ax.legend(frameon=False, ncol=2, columnspacing=1.0)
+        sev_Ks = sorted({r["K"] for r in severity_rows})
+        fig, axes = plt.subplots(
+            1, len(sev_Ks), figsize=(3.4 * len(sev_Ks), 3.0),
+            sharey=True,
+        )
+        if len(sev_Ks) == 1:
+            axes = [axes]
+        for ax, K_sev in zip(axes, sev_Ks, strict=False):
+            for agent in AGENTS:
+                arows = sorted(
+                    (r for r in severity_rows
+                     if r["agent"] == agent and r["K"] == K_sev),
+                    key=lambda r: r["noise_scale"],
+                )
+                ns = [r["noise_scale"] for r in arows]
+                acc = [r["accuracy"] for r in arows]
+                errs = [r.get("stderr", 0.0) for r in arows]
+                ax.errorbar(ns, acc, yerr=errs, label=agent,
+                            color=_PALETTE[agent], marker="o")
+            ax.set_xscale("log", base=2)
+            ax.set_xlabel("noise multiplier")
+            ax.set_title(f"K = {K_sev}")
+        axes[0].set_ylabel("top-K coverage (held-out)")
+        axes[-1].legend(frameon=False, ncol=2, columnspacing=1.0,
+                        loc="lower left")
+        fig.tight_layout()
         sev_fig = out_dir / "figures" / "severity.pdf"
         fig.savefig(sev_fig)
         fig.savefig(sev_fig.with_suffix(".png"), dpi=200)
@@ -614,15 +629,19 @@ def _aggregate(payloads: list[dict[str, Any]]) -> dict[str, Any]:
             "n_seeds": len(accs),
         })
 
-    # Aggregate severity sweep
-    by_sev: dict[tuple[str, float], list[float]] = {}
+    # Aggregate 2D severity sweep
+    by_sev: dict[tuple[str, int, float], list[float]] = {}
     for p in payloads:
         for r in p.get("severity", []):
-            by_sev.setdefault((r["agent"], r["noise_scale"]), []).append(r["accuracy"])
+            by_sev.setdefault(
+                (r["agent"], r["K"], r["noise_scale"]),
+                [],
+            ).append(r["accuracy"])
     severity = []
-    for (agent, ns), accs in by_sev.items():
+    for (agent, K_sev, ns), accs in by_sev.items():
         severity.append({
             "agent": agent,
+            "K": K_sev,
             "noise_scale": ns,
             "accuracy": float(np.mean(accs)),
             "stderr": float(np.std(accs, ddof=1) / np.sqrt(len(accs))) if len(accs) > 1 else 0.0,

@@ -29,6 +29,26 @@ Source: [results/pareto.csv](results/pareto.csv).
 | 12 | 0.246 | 0.500 | 0.919 | 0.567 | 1.000  |
 | 16 | 0.328 | 0.587 | 0.934 | 0.654 | 1.000  |
 
+## Severity sweep, K=8
+
+How brittle is Agent C's advantage to a noisier residual signal?
+We multiply the per-agent feature noise by a factor in
+{0.5, 1, 2, 4, 8} and re-measure held-out coverage.
+
+| noise mult | A | B | C | D |
+|-----------:|----:|----:|----:|----:|
+| 0.5 | 0.165 | 0.506 | 0.916 | 0.622 |
+| 1.0 | 0.163 | 0.388 | 0.853 | 0.447 |
+| 2.0 | 0.162 | 0.286 | 0.757 | 0.312 |
+| 4.0 | 0.166 | 0.225 | 0.611 | 0.235 |
+| 8.0 | 0.164 | 0.196 | 0.446 | 0.197 |
+
+Agent A is noise-invariant (random baseline, sanity check). C
+degrades smoothly but still beats baseline 3x at 8x noise; B and D
+collapse to A levels. Source:
+[results/severity.csv](results/severity.csv),
+[results/figures/severity.pdf](results/figures/severity.pdf).
+
 ## Approach to oracle
 
 Fitting `log(1 - coverage(K)) = -alpha * K + intercept` recovers the
