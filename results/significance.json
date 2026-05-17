@@ -1,7 +1,7 @@
 {
   "C_vs_A_held_out": {
     "n_pairs": 40,
-    "mean_diff": -0.7068437500000001,
+    "mean_diff": -0.70684375,
     "p_two_sided": 0.0
   },
   "C_vs_D_held_out": {

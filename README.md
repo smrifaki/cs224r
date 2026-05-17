@@ -8,6 +8,19 @@ policy observation feature give a deep RL agent faster adaptation
 under distribution shift, compared to using it as an intrinsic
 reward bonus or omitting it?
 
+**Decision-layer answer (Modal, 8 seeds, K=8, held-out corruptions):**
+
+| agent                | top-K coverage  | approach rate alpha |
+|----------------------|----------------:|--------------------:|
+| A (baseline)         | 0.162 +/- 0.001 | 0.026 |
+| B (intrinsic reward) | 0.390 +/- 0.001 | 0.051 |
+| C (residual feature) | 0.872 +/- 0.001 | 0.101 |
+| D (entropy feature)  | 0.445 +/- 0.001 | 0.061 |
+| oracle               | 1.000 +/- 0.000 |  --   |
+
+C minus A paired permutation p < 1e-3. Full breakdown in
+[RESULTS.md](RESULTS.md).
+
 Setting: foveated image classification on ImageNet and ImageNet-C.
 Four goal-conditioned PPO agents share env, backbone, and
 hyperparameters and differ only in how they consume a frozen
