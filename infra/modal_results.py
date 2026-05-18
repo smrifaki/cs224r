@@ -206,6 +206,38 @@ def evaluate(
                 "held_out": corruption in HELD_OUT,
             })
 
+    # Training-curve simulation. As Agent C streams more *training*
+    # episodes, its residual feature gets cleaner (sigma decays).
+    # This is the simulated analogue of the PPO learning curve on
+    # training corruptions. K fixed at 8, training corruptions only.
+    K_TRAIN = 8
+    n_train_steps = 80
+    training_corruptions = [c for c in CORRUPTIONS if c not in HELD_OUT]
+    train_rows: list[dict[str, Any]] = []
+    for agent in AGENTS:
+        per_step = np.zeros(n_train_steps)
+        denom = 0
+        for corruption in training_corruptions:
+            trial_rng = np.random.default_rng(
+                _stable_seed("training", seed, agent, corruption)
+            )
+            for ep in range(n_train_steps):
+                truth = _truth_map(trial_rng, corruption)
+                revealed: set[int] = set()
+                for t in range(K_TRAIN):
+                    pick = _agent_pick(agent, truth, revealed, trial_rng, t, ep)
+                    revealed.add(pick)
+                topk_truth = set(np.argsort(truth)[-K_TRAIN:].tolist())
+                per_step[ep] += len(revealed & topk_truth) / K_TRAIN
+            denom += 1
+        per_step /= denom
+        for ep, acc in enumerate(per_step):
+            train_rows.append({
+                "agent": agent,
+                "episode": ep,
+                "accuracy": float(acc),
+            })
+
     # Feature-noise severity sweep across (K, noise_scale) for each
     # agent. Reports held-out coverage on a 2D grid; how brittle is
     # Agent C's advantage to a noisier residual signal, and how does
@@ -250,6 +282,7 @@ def evaluate(
         "held_out": HELD_OUT,
         "pareto": pareto_rows,
         "adaptation": adapt_rows,
+        "training": train_rows,
         "regret": regret_rows,
         "severity": severity_rows,
     }
@@ -314,6 +347,14 @@ def write_outputs(payload: dict[str, Any], out_dir: Path) -> dict[str, Path]:
         writer = csv.DictWriter(f, fieldnames=list(payload["regret"][0].keys()))
         writer.writeheader()
         writer.writerows(payload["regret"])
+
+    training_path = out_dir / "training.csv"
+    train_rows = payload.get("training") or []
+    if train_rows:
+        with training_path.open("w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=list(train_rows[0].keys()))
+            writer.writeheader()
+            writer.writerows(train_rows)
 
     severity_path = out_dir / "severity.csv"
     severity_rows = payload.get("severity") or []
@@ -391,6 +432,26 @@ def write_outputs(payload: dict[str, Any], out_dir: Path) -> dict[str, Path]:
     fig.savefig(pareto_fig)
     fig.savefig(pareto_fig.with_suffix(".png"), dpi=200)
     plt.close(fig)
+
+    # Training-curve figure
+    if train_rows:
+        fig, ax = plt.subplots(figsize=(4.6, 3.0))
+        for agent in AGENTS:
+            arows = [r for r in train_rows if r["agent"] == agent]
+            arows.sort(key=lambda r: r["episode"])
+            xs = np.array([r["episode"] for r in arows])
+            ys = np.array([r["accuracy"] for r in arows])
+            es = np.array([r.get("stderr", 0.0) for r in arows])
+            ax.plot(xs, ys, label=agent, color=_PALETTE[agent])
+            ax.fill_between(xs, ys - es, ys + es,
+                            color=_PALETTE[agent], alpha=0.15, linewidth=0)
+        ax.set_xlabel("training episode")
+        ax.set_ylabel("top-K coverage (training corruptions)")
+        ax.legend(frameon=False, ncol=2, columnspacing=1.0)
+        train_fig = out_dir / "figures" / "training_curve.pdf"
+        fig.savefig(train_fig)
+        fig.savefig(train_fig.with_suffix(".png"), dpi=200)
+        plt.close(fig)
 
     # Adaptation figure
     fig, ax = plt.subplots(figsize=(4.6, 3.0))
@@ -629,6 +690,21 @@ def _aggregate(payloads: list[dict[str, Any]]) -> dict[str, Any]:
             "n_seeds": len(accs),
         })
 
+    # Aggregate training curves
+    by_train: dict[tuple[str, int], list[float]] = {}
+    for p in payloads:
+        for r in p.get("training", []):
+            by_train.setdefault((r["agent"], r["episode"]), []).append(r["accuracy"])
+    training = []
+    for (agent, ep), accs in by_train.items():
+        training.append({
+            "agent": agent,
+            "episode": ep,
+            "accuracy": float(np.mean(accs)),
+            "stderr": float(np.std(accs, ddof=1) / np.sqrt(len(accs))) if len(accs) > 1 else 0.0,
+            "n_seeds": len(accs),
+        })
+
     # Aggregate 2D severity sweep
     by_sev: dict[tuple[str, int, float], list[float]] = {}
     for p in payloads:
@@ -736,6 +812,7 @@ def _aggregate(payloads: list[dict[str, Any]]) -> dict[str, Any]:
         "held_out": held_out,
         "pareto": pareto,
         "adaptation": adapt,
+        "training": training,
         "regret": regret,
         "severity": severity,
         "significance": significance,
