@@ -1,0 +1,74 @@
+[
+  {
+    "agent": "A",
+    "seed": 0,
+    "n_env_steps": 50000,
+    "n_classes": 100,
+    "backbone_val_acc": 0.873,
+    "train_time_s": 100.98137879371643,
+    "n_train_episodes": 0,
+    "eval_mean_reward": -0.009999999999999998,
+    "eval_mean_acc": 0.04,
+    "wandb_url": "https://wandb.ai/byturnips-/cs224r-foveated-imagenet/runs/hgofjxvu"
+  },
+  {
+    "agent": "A",
+    "seed": 1,
+    "n_env_steps": 50000,
+    "n_classes": 100,
+    "backbone_val_acc": 0.878,
+    "train_time_s": 99.10074639320374,
+    "n_train_episodes": 0,
+    "eval_mean_reward": -0.009999999999999998,
+    "eval_mean_acc": 0.02,
+    "wandb_url": "https://wandb.ai/byturnips-/cs224r-foveated-imagenet/runs/ixi7wwkj"
+  },
+  {
+    "agent": "A",
+    "seed": 2,
+    "n_env_steps": 50000,
+    "n_classes": 100,
+    "backbone_val_acc": 0.891,
+    "train_time_s": 99.99874591827393,
+    "n_train_episodes": 0,
+    "eval_mean_reward": -0.01045,
+    "eval_mean_acc": 0.035,
+    "wandb_url": "https://wandb.ai/byturnips-/cs224r-foveated-imagenet/runs/19opywi0"
+  },
+  {
+    "agent": "D",
+    "seed": 0,
+    "n_env_steps": 50000,
+    "n_classes": 100,
+    "backbone_val_acc": 0.873,
+    "train_time_s": 111.48830795288086,
+    "n_train_episodes": 0,
+    "eval_mean_reward": -0.009999999999999998,
+    "eval_mean_acc": 0.04,
+    "wandb_url": "https://wandb.ai/byturnips-/cs224r-foveated-imagenet/runs/109u134m"
+  },
+  {
+    "agent": "D",
+    "seed": 1,
+    "n_env_steps": 50000,
+    "n_classes": 100,
+    "backbone_val_acc": 0.878,
+    "train_time_s": 114.6964340209961,
+    "n_train_episodes": 0,
+    "eval_mean_reward": -0.009999999999999998,
+    "eval_mean_acc": 0.025,
+    "wandb_url": "https://wandb.ai/byturnips-/cs224r-foveated-imagenet/runs/15d8yqsu"
+  },
+  {
+    "agent": "D",
+    "seed": 2,
+    "n_env_steps": 50000,
+    "n_classes": 100,
+    "backbone_val_acc": 0.891,
+    "train_time_s": 124.0271315574646,
+    "n_train_episodes": 0,
+    "eval_mean_reward": -0.009999999999999998,
+    "eval_mean_acc": 0.03,
+    "wandb_url": "https://wandb.ai/byturnips-/cs224r-foveated-imagenet/runs/qfjyh41f"
+  }
+]
