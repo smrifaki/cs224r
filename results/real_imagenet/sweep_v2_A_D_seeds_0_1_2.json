@@ -1,0 +1,80 @@
+[
+  {
+    "agent": "A",
+    "seed": 0,
+    "n_env_steps": 60000,
+    "n_classes": 100,
+    "backbone_val_acc": 0.8883333333333333,
+    "train_time_s": 136.0093915462494,
+    "n_terminal_eps": 8003,
+    "eval_mean_reward": 0.7625,
+    "eval_mean_acc": 0.8425,
+    "train_mean_acc_last500": 0.9,
+    "wandb_url": "https://wandb.ai/byturnips-/cs224r-foveated-v2/runs/a4o20oty"
+  },
+  {
+    "agent": "A",
+    "seed": 1,
+    "n_env_steps": 60000,
+    "n_classes": 100,
+    "backbone_val_acc": 0.9016666666666666,
+    "train_time_s": 134.449147939682,
+    "n_terminal_eps": 7995,
+    "eval_mean_reward": 0.795,
+    "eval_mean_acc": 0.875,
+    "train_mean_acc_last500": 0.912,
+    "wandb_url": "https://wandb.ai/byturnips-/cs224r-foveated-v2/runs/qg5r8d31"
+  },
+  {
+    "agent": "A",
+    "seed": 2,
+    "n_env_steps": 60000,
+    "n_classes": 100,
+    "backbone_val_acc": 0.9016666666666666,
+    "train_time_s": 143.16377067565918,
+    "n_terminal_eps": 8030,
+    "eval_mean_reward": 0.73,
+    "eval_mean_acc": 0.81,
+    "train_mean_acc_last500": 0.896,
+    "wandb_url": "https://wandb.ai/byturnips-/cs224r-foveated-v2/runs/sgoq435l"
+  },
+  {
+    "agent": "D",
+    "seed": 0,
+    "n_env_steps": 60000,
+    "n_classes": 100,
+    "backbone_val_acc": 0.8883333333333333,
+    "train_time_s": 136.15139365196228,
+    "n_terminal_eps": 8004,
+    "eval_mean_reward": 0.76,
+    "eval_mean_acc": 0.84,
+    "train_mean_acc_last500": 0.894,
+    "wandb_url": "https://wandb.ai/byturnips-/cs224r-foveated-v2/runs/8e7o7o55"
+  },
+  {
+    "agent": "D",
+    "seed": 1,
+    "n_env_steps": 60000,
+    "n_classes": 100,
+    "backbone_val_acc": 0.9016666666666666,
+    "train_time_s": 140.6988091468811,
+    "n_terminal_eps": 8030,
+    "eval_mean_reward": 0.7925,
+    "eval_mean_acc": 0.8725,
+    "train_mean_acc_last500": 0.9,
+    "wandb_url": "https://wandb.ai/byturnips-/cs224r-foveated-v2/runs/i09lg8y6"
+  },
+  {
+    "agent": "D",
+    "seed": 2,
+    "n_env_steps": 60000,
+    "n_classes": 100,
+    "backbone_val_acc": 0.9016666666666666,
+    "train_time_s": 135.80989027023315,
+    "n_terminal_eps": 7991,
+    "eval_mean_reward": 0.725,
+    "eval_mean_acc": 0.805,
+    "train_mean_acc_last500": 0.9,
+    "wandb_url": "https://wandb.ai/byturnips-/cs224r-foveated-v2/runs/w1f0izyg"
+  }
+]
