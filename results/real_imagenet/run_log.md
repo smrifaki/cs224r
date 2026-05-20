@@ -1,57 +1,63 @@
-# Real ImageNet-100 PPO sweep on Modal T4
+# Real ImageNet-100 PPO baseline v2 — proposal-quality
 
-Six T4 jobs in parallel via `infra/modal_real_imagenet.py::main`:
-2 agents (A, D) x 3 seeds (0, 1, 2), 50,000 env-steps each.
+Six T4 jobs in parallel via `infra/modal_real_imagenet_v2.py::main`:
+2 agents (A, D) x 3 seeds (0, 1, 2), 60,000 env-steps each.
 
 ## Setup
 
 * Modal T4, 100-class subset of ImageNet sampled from the HF
   dataset on the `cs224r-imagenet` Modal Volume.
-* ViT-small (timm `vit_small_patch16_224`) loaded with pretrained
-  weights; a fresh 100-class linear head fine-tuned for 1 epoch on
-  whole-image features.
-  * Backbone head val acc on 100-class ImageNet: **0.878**.
-* Foveated MDP: 7x7 patch grid, K=8 reveals per episode.
+* Backbone: timm `vit_small_patch16_224` (frozen pretrained
+  weights, 384-d features). A fresh 100-class linear head is fine-
+  tuned for 2 epochs on whole-image features.
+  * Backbone whole-image val accuracy: 0.888 - 0.902 across seeds.
+* Foveated MDP: 7x7 patch grid pooled from the ViT's 14x14 patches,
+  K=8 reveals per episode, patch_cost = 0.01.
+* PPO via stable-baselines3, 60k env-steps, n_steps=512, batch=64,
+  lr=3e-4, MLP policy [256, 256].
 
-## Per-job results
+## Per-(agent, seed) eval
 
-| agent | seed | eval acc | wall time |
-|-------|-----:|---------:|----------:|
-| A     | 0    |  0.040   |   101 s   |
-| A     | 1    |  0.020   |    99 s   |
-| A     | 2    |  0.035   |   111 s   |
-| D     | 0    |  0.040   |   124 s   |
-| D     | 1    | (running)|     -     |
-| D     | 2    |  0.030   |   124 s   |
+| agent | seed | backbone val acc | eval acc | train_last500 acc | wall time |
+|-------|-----:|-----------------:|---------:|------------------:|----------:|
+| A     | 0    |  0.888           |  0.843   |  0.900            |  136 s    |
+| A     | 1    |  0.902           |  0.875   |  0.912            |  134 s    |
+| A     | 2    |  0.902           |  0.810   |  0.896            |  143 s    |
+| D     | 0    |  0.888           |  0.840   |  0.894            |  136 s    |
+| D     | 1    |  0.902           |  0.873   |  0.900            |  141 s    |
+| D     | 2    |  0.902           |  0.805   |  0.900            |  136 s    |
 
-Random baseline on 100 classes = 0.01. Agents are ~3x random but
-~25x below the backbone's whole-image accuracy (0.878).
+Aggregate over 3 seeds:
 
-## What this is
+| agent | eval acc mean | eval acc std |
+|-------|--------------:|-------------:|
+| A     |  0.843        |  0.027       |
+| D     |  0.839        |  0.028       |
 
-Real Modal-T4 PPO on real ImageNet-100. Reproducible by running
-`infra/modal_real_imagenet.py::main` against a clean Modal
-workspace (HF dataset on `cs224r-imagenet` volume, wandb secret).
+Random baseline for 100 classes: 0.010. The K=8 PPO agents land
+within ~5% of the backbone's whole-image accuracy (~0.89), so the
+foveated policy has learned to commit informative patches.
 
-## Why the accuracy is low
+Agents A and D are at parity. The proposal predicts C > A, D >= A,
+B > A; we still need Agents B (intrinsic-reward bonus) and C
+(residual-as-feature) which both require a pretrained forward-
+dynamics model on (z_t, action, z_{t+1}) triples. That dynamics
+pretrain is the next step (~30 min on T4 for the dataset + ~10
+min model train).
 
-The env's observation pools the first 8 of 384 ViT feature dims to
-keep the obs vector tractable for stable-baselines3 PPO. The
-classifier head then receives a zero-padded 384-dim vector with only
-8 dims set, so the classifier collapses to ~uniform over classes
-once the agent reveals patches. The PPO learns *which* patches to
-reveal but the downstream head can't translate that into class
-margin.
+## Fix vs v1
 
-## Fix path (not yet shipped)
+v1 (sweep_A_D_seeds_0_1_2.json) capped at 0.02-0.04 eval acc
+because the foveated env's obs pooled only the first 8 of 384 ViT
+feature dims and then zero-padded back to 384 for the classifier.
+v2 keeps the obs vector compact (mask + per-patch residual +
+assembly entropy = 99-d) and gives the classifier the **full**
+384-d mean-pooled feature over the committed mask. The factor-25x
+jump from 0.03 -> 0.84 confirms the bottleneck was that pooling.
 
-Two changes restore proposal-quality:
+## Run
 
-1. Decouple the observation (kept compact at 49 + 8 + 49 dims) from
-   the classifier (re-uses the full 384-dim per-patch features
-   pooled over the committed mask).
-2. Train at K-sweep {4, 8, 16} with 200k env-steps per (agent, seed)
-   and add a forward-dynamics-model pretrain pass so Agents B + C
-   can run too.
-
-Estimate: ~6 hours additional Modal-T4 compute.
+```bash
+modal run infra/modal_real_imagenet_v2.py::main \
+  --agents A,D --seeds 0,1,2 --n-env-steps 60000 --n-classes 100
+```
