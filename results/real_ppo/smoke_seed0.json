@@ -1,0 +1,11 @@
+{
+  "seed": 0,
+  "n_steps": 12000,
+  "train_time_s": 28.4554386138916,
+  "backbone_val_acc": 0.3706,
+  "n_train_episodes": 0,
+  "train_reward_curve": [],
+  "train_acc_curve": [],
+  "eval_mean_reward": -0.014125,
+  "eval_mean_acc": 0.135
+}
