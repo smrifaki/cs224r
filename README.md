@@ -8,23 +8,30 @@ policy observation feature give a deep RL agent faster adaptation
 under distribution shift, compared to using it as an intrinsic
 reward bonus or omitting it?
 
-**Decision-layer answer (Modal, 8 seeds, K=8, held-out corruptions):**
+**Real ImageNet-100 PPO sweep on Modal T4** (4 agents × 3 seeds,
+60k env-steps each, frozen pretrained ViT-small backbone, K=8 of
+49 patches):
 
-| agent                | top-K coverage  | approach rate alpha |
-|----------------------|----------------:|--------------------:|
-| A (baseline)         | 0.162 +/- 0.001 | 0.026 |
-| B (intrinsic reward) | 0.390 +/- 0.001 | 0.051 |
-| C (residual feature) | 0.872 +/- 0.001 | 0.101 |
-| D (entropy feature)  | 0.445 +/- 0.001 | 0.061 |
-| oracle               | 1.000 +/- 0.000 |  --   |
+| agent | mechanism                          | mean eval acc |
+|-------|------------------------------------|--------------:|
+| A     | baseline                           | 0.845         |
+| B     | intrinsic reward = β · ‖residual‖² | 0.823         |
+| C     | precision-weighted residual obs    | 0.833         |
+| D     | assembly entropy obs               | 0.836         |
 
-C minus A paired permutation p < 1e-3. Full breakdown in
-[RESULTS.md](RESULTS.md).
+Backbone whole-image val acc: 0.882-0.901. Random baseline: 0.010.
+The K=8 PPO agents recover ~94% of the backbone ceiling. Per-seed
+breakdown + dynamics-pretrain log in
+[results/real_imagenet/](results/real_imagenet/).
 
-Setting: foveated image classification on ImageNet and ImageNet-C.
-Four goal-conditioned PPO agents share env, backbone, and
-hyperparameters and differ only in how they consume a frozen
-forward-dynamics model's residual signal.
+The C > A claim depends on distribution shift; the next sweep adds
+ImageNet-C corruptions and the held-out evaluation. Code for that
+is the same `infra/modal_real_full.py` with a config flag.
+
+Setting: foveated image classification on ImageNet (currently a
+100-class subset) and ImageNet-C (next). Four goal-conditioned PPO
+agents share env, backbone, and hyperparameters and differ only in
+how they consume a frozen forward-dynamics model's residual signal.
 
 | Agent | Prediction-error channel |
 |-------|--------------------------|
@@ -54,36 +61,19 @@ wandb login
 modal token new
 ```
 
-## Running experiments
-
-Long-running jobs go to Modal; smoke runs and figures are local.
+## Running the real proposal sweep
 
 ```bash
-# one-time data fetch
-modal run infra/download_data.py
-
-# smoke train
-modal run infra/modal_app.py::smoke
-
-# train one agent at one seed
-modal run infra/modal_app.py::train --agent A --seed 42
-
-# fan out
-python scripts/train_all.py
-
-# evaluate held-out corruptions
-python scripts/eval_all.py
-
-# figures and regret table
-python scripts/make_all_figures.py
+modal run infra/modal_real_full.py::main \
+  --agents A,B,C,D --seeds 0,1,2 --n-env-steps 60000 --n-classes 100
 ```
 
-CLI entry points after install:
+This launches one forward-dynamics pretrain job on A10G followed by
+12 PPO training jobs in parallel on T4 (4 agents × 3 seeds). Each
+job streams to wandb. Results land in `results/real_imagenet/` and
+checkpoints on the `cs224r-ckpts` Modal Volume.
 
-```bash
-fov-train --agent C --seed 1337 --config configs/agent_c.yaml
-fov-eval  --ckpt /ckpt/agentC/seed1337/best.pt --out results/agentC_seed1337.csv
-```
+Full reproduction recipe in [REPRODUCE.md](REPRODUCE.md).
 
 ## Layout
 
@@ -98,10 +88,12 @@ fov-eval  --ckpt /ckpt/agentC/seed1337/best.pt --out results/agentC_seed1337.csv
     models/               ViT-small backbone, dynamics model (plain + Bayesian + IB)
     algos/                PPO, rollout buffer, intrinsic reward, dynamics training
     experiments/          train_agent, evaluate, aggregate, calibration, etc.
-  infra/                  Modal image, app, data-download
+  infra/                  Modal entry points (real_full, real_imagenet_v2, real_imagenet, app, download_data, modal_config)
   tests/                  pytest unit and integration tests
-  scripts/                local orchestration (smoke, train-all, figures)
+  scripts/                local orchestration
   docs/                   phase plans and design decisions
+  results/real_imagenet/  real Modal-T4 PPO numbers from the sweep
+  results/real_ppo/       28-s CIFAR-10 PPO smoke (validates the stack)
 ```
 
 Course-submission deliverables (proposal, milestone, poster, final
@@ -119,73 +111,17 @@ https://github.com/BYTurnips/CS224R, not here.
 | [docs/phase4_agents_bc.md](docs/phase4_agents_bc.md) | Agents B (intrinsic reward) and C (obs feature) |
 | [docs/phase5_evaluation.md](docs/phase5_evaluation.md) | held-out eval, Pareto curve, adaptation curve, regret table |
 | [docs/design_decisions.md](docs/design_decisions.md) | implementation choices and trade-offs |
+| [docs/decisions.md](docs/decisions.md) | recent design choices log |
 
 ## Deliverables
 
-* Figure 1: Pareto curve, accuracy vs patch budget for A/B/C/D on
-  held-out corruptions.
+* Figure 1: Pareto curve, accuracy vs patch budget across A/B/C/D
+  on held-out ImageNet-C corruptions. Requires the corruption-eval
+  pass.
 * Figure 2: adaptation curve, accuracy vs number of held-out-
   corruption episodes streamed.
 * Table: per-agent, per-corruption regret (mean +/- std over three
   seeds).
-
-## Decision-layer results (Modal)
-
-Full PPO + ImageNet training is the headline experiment; it lands
-on H100 / T4 GPUs via the `infra/modal_app.py::train` entry point.
-A faster decision-layer evaluation exercises the same four agents
-on a fully synthetic foveated MDP, runs on CPU, and produces all
-of the deliverables shape with fixed seeds:
-
-```bash
-modal run infra/modal_results.py::main --seeds 0,1,2,3,4
-```
-
-Outputs land in `results/`:
-
-* `pareto.csv`, `adaptation.csv`, `regret.csv` (per-agent metrics)
-* `significance.json` (paired permutation test results)
-* `figures/pareto.pdf`, `figures/adaptation.pdf`,
-  `figures/regret_heatmap.pdf`, `figures/k8_bar.pdf`
-
-Headline numbers (top-K coverage at K=8 on held-out corruptions,
-8 seeds, 400 episodes per cell):
-
-| agent | top-K coverage |
-|-------|---------------:|
-| A (baseline)           | 0.162 +/- 0.001 |
-| B (intrinsic reward)   | 0.390 +/- 0.001 |
-| C (residual feature)   | 0.872 +/- 0.001 |
-| D (entropy feature)    | 0.445 +/- 0.001 |
-| oracle                 | 1.000 +/- 0.000 |
-
-Paired permutation test on per-corruption regret (8 seeds x 5 held-
-out corruptions = 40 pairs):
-
-| comparison | mean diff in regret | p (two-sided) |
-|------------|--------------------:|--------------:|
-| C vs A     | -0.707 | < 1e-3 |
-| C vs D     | -0.424 | < 1e-3 |
-
-Exponential approach to the ceiling, fitted across K:
-
-| agent | alpha (1/K) | R^2 |
-|-------|------------:|----:|
-| A | 0.026 | 0.997 |
-| B | 0.051 | 0.999 |
-| C | 0.101 | 0.997 |
-| D | 0.061 | 0.998 |
-
-Agent C reaches the oracle ceiling about 4x faster than baseline A.
-Full per-K significance and per-corruption breakdown:
-[RESULTS.md](RESULTS.md). Numbers reproduce byte-identically across
-re-runs because the per-cell RNG is derived from a stable blake2b
-hash of `(seed, K, agent, corruption, episode)`.
-
-The numbers are reproducible from the fixed seeds; the residual-as-
-feature agent dominates on held-out distribution shift, the
-intrinsic-reward agent recovers a meaningful but smaller fraction,
-and the entropy-feature agent sits between them.
 
 ## License
 
