@@ -1,28 +1,39 @@
 # Reproduce
 
-Full PPO + ImageNet training is a 100+ GPU-hour run that lives in
-`infra/modal_app.py::train`. The decision-layer pipeline that
-produces every artefact under `results/` is fully reproducible
-from a clean Modal account in under a minute on CPU:
+The headline numbers in [RESULTS.md](RESULTS.md) come from real
+Modal-T4 PPO training on real HF ImageNet-100, with a forward-
+dynamics pretrain on Modal A10G. Twelve PPO jobs run in parallel
+on T4 (4 agents × 3 seeds).
 
 ```bash
 uv venv .venv --python 3.11 && source .venv/bin/activate
 uv pip install modal numpy matplotlib
 modal token set --token-id "$MODAL_TOKEN_ID" --token-secret "$MODAL_TOKEN_SECRET"
-modal run infra/modal_results.py::main
+modal run infra/modal_real_full.py::main \
+  --agents A,B,C,D --seeds 0,1,2 --n-env-steps 60000 --n-classes 100
 ```
 
-Default: 8 seeds (0..7), n_episodes=400, K in `{4,6,8,10,12,16}`. The
-per-cell RNG is `blake2b("pareto"|seed|K|agent|corruption|episode)`,
-so re-runs are byte-identical given the same seed list.
+Default: 100-class subset of ImageNet sampled deterministically from
+class indices via `np.random.default_rng(0)`, 60 train + 12 val
+images per class. The backbone is timm `vit_small_patch16_224`
+(frozen pretrained weights); a 100-class head is fine-tuned for 2
+epochs on whole-image features per (agent, seed). The 7×7 foveated
+grid is pooled from the ViT's 14×14 patch tokens; K=8 reveals per
+episode.
 
 Headline checks after a run:
 
-* `results/pareto.csv` has 30 rows (5 agents x 6 Ks); K=8 row for
-  agent C should land near 0.872 +/- 0.001.
-* `results/significance.json` reports paired permutation tests;
-  `C_vs_A_held_out.p_two_sided` should be < 1e-3.
-* `results/regression.json` reports the exponential approach-rate
-  fit; `alpha` for agent C should be ~0.10 with R^2 > 0.99.
-* `results/severity.csv` and `training.csv` provide the noise-
-  robustness and learning-curve breakdowns.
+* `results/real_imagenet/sweep_full_A_B_C_D_seeds_0_1_2.json`
+  contains 12 rows; mean `eval_mean_acc` per agent should land in
+  0.80–0.86.
+* `results/real_imagenet/sweep_v2_A_D_seeds_0_1_2.json` is the v2
+  baseline (A and D only) that demonstrated the fix to the
+  feature-pooling bug; mean eval acc 0.84.
+* `train_mean_acc_last500` on each (agent, seed) shows the train-
+  time accuracy plateau, ~0.89–0.92.
+
+The first PPO smoke ever ran on CIFAR-10 at much smaller scale:
+
+* `results/real_ppo/smoke_seed0.json` — 12k env-steps, eval acc
+  0.135 (vs 0.10 random), backbone capped at 0.371. Kept only to
+  prove the full stack runs end-to-end on real images.
