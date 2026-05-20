@@ -29,6 +29,37 @@ Source: [results/pareto.csv](results/pareto.csv).
 | 12 | 0.246 | 0.500 | 0.919 | 0.567 | 1.000  |
 | 16 | 0.328 | 0.587 | 0.934 | 0.654 | 1.000  |
 
+## Training curve (training corruptions, K=8)
+
+Per-episode top-K coverage on the training corruption set, 8 seeds
+averaged. Agent C climbs from 0.58 at episode 0 to ~0.87 by episode
+80; A stays flat near the random-baseline level.
+
+| agent | ep 0   | ep 20  | ep 80  |
+|-------|-------:|-------:|-------:|
+| A     | 0.17 +/- 0.02 | 0.16 +/- 0.02 | 0.17 +/- 0.02 |
+| B     | 0.41 +/- 0.03 | 0.39 +/- 0.03 | 0.45 +/- 0.02 |
+| C     | 0.58 +/- 0.01 | 0.83 +/- 0.02 | 0.87 +/- 0.01 |
+| D     | 0.46 +/- 0.02 | 0.47 +/- 0.01 | 0.45 +/- 0.02 |
+
+Source: [results/training.csv](results/training.csv),
+[results/figures/training_curve.pdf](results/figures/training_curve.pdf).
+
+Sample efficiency: episode at which each agent first crosses
+50/75/95% of its final-window mean accuracy.
+
+| agent | final acc | ep -> 50% | ep -> 75% | ep -> 95% |
+|-------|----------:|----------:|----------:|----------:|
+| A     | 0.164 | 0 | 0 |  0 |
+| B     | 0.404 | 0 | 0 |  0 |
+| C     | 0.886 | 0 | 4 | 13 |
+| D     | 0.468 | 0 | 0 |  0 |
+
+Only Agent C exhibits real episode-over-episode improvement on the
+training corruption set; A, B, D start above their own final mean
+because their feature noise does not decay with episodes. Source:
+[results/sample_efficiency.json](results/sample_efficiency.json).
+
 ## Severity sweep, agent C across K
 
 How brittle is Agent C's advantage to a noisier residual signal,

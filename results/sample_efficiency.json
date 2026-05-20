@@ -1,0 +1,30 @@
+[
+  {
+    "agent": "A",
+    "final_acc": 0.16354166666666667,
+    "ep_to_50pct": 0,
+    "ep_to_75pct": 0,
+    "ep_to_95pct": 0
+  },
+  {
+    "agent": "B",
+    "final_acc": 0.4036458333333333,
+    "ep_to_50pct": 0,
+    "ep_to_75pct": 0,
+    "ep_to_95pct": 0
+  },
+  {
+    "agent": "C",
+    "final_acc": 0.8864583333333333,
+    "ep_to_50pct": 0,
+    "ep_to_75pct": 4,
+    "ep_to_95pct": 13
+  },
+  {
+    "agent": "D",
+    "final_acc": 0.4682291666666667,
+    "ep_to_50pct": 0,
+    "ep_to_75pct": 0,
+    "ep_to_95pct": 0
+  }
+]

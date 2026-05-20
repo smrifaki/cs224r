@@ -364,6 +364,33 @@ def write_outputs(payload: dict[str, Any], out_dir: Path) -> dict[str, Path]:
             writer.writeheader()
             writer.writerows(severity_rows)
 
+    # Sample-efficiency thresholds from the training curves: for each
+    # agent, find the episode at which its smoothed accuracy first
+    # crosses 50%, 75%, and 95% of its final-window mean.
+    train_rows_local = payload.get("training") or []
+    if train_rows_local:
+        by_agent_train: dict[str, list[tuple[int, float]]] = {}
+        for r in train_rows_local:
+            by_agent_train.setdefault(r["agent"], []).append((r["episode"], r["accuracy"]))
+        eff_rows: list[dict[str, Any]] = []
+        for agent, pts in by_agent_train.items():
+            pts.sort()
+            eps = np.array([p[0] for p in pts], dtype=float)
+            accs = np.array([p[1] for p in pts], dtype=float)
+            if len(accs) >= 5:
+                final = float(accs[-min(5, len(accs)):].mean())
+            else:
+                final = float(accs[-1])
+            row = {"agent": agent, "final_acc": final}
+            for thresh in (0.5, 0.75, 0.95):
+                target = thresh * final
+                where = np.where(accs >= target)[0]
+                row[f"ep_to_{int(thresh*100)}pct"] = int(eps[where[0]]) if where.size else -1
+            eff_rows.append(row)
+        import json as _json
+        eff_path = out_dir / "sample_efficiency.json"
+        eff_path.write_text(_json.dumps(eff_rows, indent=2))
+
     import json as _json
     if "significance" in payload:
         sig_path = out_dir / "significance.json"
