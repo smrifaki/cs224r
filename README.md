@@ -92,10 +92,6 @@ Full reproduction recipe in [REPRODUCE.md](REPRODUCE.md).
   results/real_ppo/       28-s CIFAR-10 PPO smoke (validates the stack)
 ```
 
-Course-submission deliverables (proposal, milestone, poster, final
-paper) live in the companion repo
-https://github.com/BYTurnips/CS224R, not here.
-
 ## Phase docs
 
 | Doc | Contents |
