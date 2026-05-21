@@ -1,7 +1,6 @@
 # Foveated adaptive sensing with prediction-error policy features
 
-CS 224R project, Stanford, spring 2026. Authors: Mouhssine Rifaki and
-Brion Ye.
+CS 224R project, Stanford, spring 2026.
 
 Research question: does exposing a prediction-error signal as a
 policy observation feature give a deep RL agent faster adaptation
