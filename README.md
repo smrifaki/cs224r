@@ -39,9 +39,6 @@ how they consume a frozen forward-dynamics model's residual signal.
 | C | per-action prospective uncertainty as an observation feature |
 | D | classifier entropy as an observation feature |
 
-Companion course-submission repo at
-https://github.com/BYTurnips/CS224R (Brion's enrolled-student copy).
-
 ## Setup
 
 ```bash
